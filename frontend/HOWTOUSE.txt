@@ -1,0 +1,92 @@
+Что нужно сделать другу-бэкендеру
+1. Убедиться, что бэкенд запущен и работает
+Бэкенд должен быть на Node.js (Express) и слушать порт 3000.
+
+Проверить эндпоинты:
+
+POST /api/auth/register
+
+POST /api/auth/login
+
+GET /api/resources
+
+GET /api/resources/status?year=...&month=...
+
+GET /api/bookings/me
+
+POST /api/bookings
+
+DELETE /api/bookings/:id
+
+PUT /api/bookings/:id/complete
+
+CRUD для ресурсов (если нужно)
+
+2. Настроить прокси Vite в файле frontend/vite.config.js
+js
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+    },
+  },
+});
+Это позволит фронтенду обращаться к /api/... без CORS.
+
+3. Заменить демо-функции на реальные запросы в src/pages/LoginSignup.jsx
+В handleLogin и handleSignup вместо setTimeout и alert сделать fetch на /api/auth/login и /api/auth/register.
+
+После успешного ответа сохранить token и user в localStorage, затем navigate('/dashboard').
+
+Обработать ошибки (неверный email, пароль, существующий пользователь).
+
+Пример для логина:
+
+js
+const response = await fetch('/api/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ email: loginEmail, password: loginPassword })
+});
+const data = await response.json();
+if (!response.ok) throw new Error(data.error);
+localStorage.setItem('token', data.token);
+localStorage.setItem('user', JSON.stringify(data.user));
+navigate('/dashboard');
+4. В src/pages/Dashboard.jsx добавить проверку токена и загрузку данных
+В начале компонента (useEffect) проверить localStorage.getItem('token') – если нет, редирект на /.
+
+Заменить статические demoBookings на реальную загрузку из /api/bookings/me (с заголовком Authorization: Bearer ${token}).
+
+Заменить статический календарь на загрузку данных из /api/resources/status?year=...&month=... и отображать занятость (но пока можно оставить пустым).
+
+Для формы создания ресурса (handleCreateResource) сделать POST-запрос на /api/resources (с токеном админа).
+
+5. Для режима админа
+При переключении adminMode не нужно ничего запрашивать – только визуал.
+
+Но при создании ресурса бэкенд должен проверять, что пользователь – админ (использовать middleware requireAdmin).
+
+6. Проверить CORS
+Если бэкенд не настроен на приём запросов с порта 5173, установить cors и добавить app.use(cors()) в index.js.
+
+7. Протестировать
+Зарегистрировать пользователя → вход → дашборд.
+
+Включить режим админа → создать ресурс через форму.
+
+Посмотреть бронирования (пока заглушки, потом добавить реальные).
+
+Вспомогательные советы
+В файлах фронтенда уже есть комментарии с описанием ожидаемых JSON-схем.
+
+Все эндпоинты бэкенда у вас уже реализованы (из предыдущих версий index.js). Нужно только убедиться, что они работают и возвращают правильные поля (full_name, email, is_admin).
+
+Если нужно, скорректировать таблицу users, добавив столбцы full_name и email.
